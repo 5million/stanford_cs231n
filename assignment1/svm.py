@@ -89,20 +89,12 @@ print(X_train.shape, X_val.shape, X_test.shape, X_dev.shape)
 # generate a random SVM weight matrix of small numbers
 W = np.random.randn(3073, 10) * 0.0001 
 
-# Once you've implemented the gradient, recompute it with the code below
-# and gradient check it with the function we provided for you
-
-# Compute the loss and its gradient at W.
-loss, grad = svm_loss_naive(W, X_dev, y_dev, 0.0)
 # In the file linear_classifier.py, implement SGD in the function
 # LinearClassifier.train() and then run it with the code below.
 
 svm = LinearSVM()
-tic = time.time()
 loss_hist = svm.train(X_train, y_train, learning_rate=1e-7, reg=2.5e4,
                       num_iters=1500, verbose=True)
-toc = time.time()
-print('That took %fs' % (toc - tic))
 
 # A useful debugging strategy is to plot the loss as a function of
 # iteration number:
@@ -117,3 +109,4 @@ y_train_pred = svm.predict(X_train)
 print('training accuracy: %f' % (np.mean(y_train == y_train_pred), ))
 y_val_pred = svm.predict(X_val)
 print('validation accuracy: %f' % (np.mean(y_val == y_val_pred), ))
+
