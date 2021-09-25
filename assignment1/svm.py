@@ -109,4 +109,3 @@ y_train_pred = svm.predict(X_train)
 print('training accuracy: %f' % (np.mean(y_train == y_train_pred), ))
 y_val_pred = svm.predict(X_val)
 print('validation accuracy: %f' % (np.mean(y_val == y_val_pred), ))
-
