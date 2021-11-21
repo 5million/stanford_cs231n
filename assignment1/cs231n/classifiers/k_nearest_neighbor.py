@@ -1,6 +1,7 @@
 from builtins import range
 from builtins import object
 import numpy as np
+from numpy.core.fromnumeric import argmax
 from past.builtins import xrange
 
 
@@ -77,7 +78,7 @@ class KNearestNeighbor(object):
                 #####################################################################
                 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-                pass
+                dists[i][j] = np.sqrt(np.sum(np.square(X[i] - self.X_train[j])))
 
                 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -101,7 +102,7 @@ class KNearestNeighbor(object):
             #######################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            dists[i, :] = np.sqrt(np.sum(np.square(X[i] - self.X_train), axis=1))
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -131,7 +132,10 @@ class KNearestNeighbor(object):
         #########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        dists += np.transpose([np.sum(np.square(X), axis=1)])
+        dists += np.sum(np.square(self.X_train), axis=1)
+        dists -= 2 * X.dot(self.X_train.T)
+        dists = np.sqrt(dists)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -163,8 +167,7 @@ class KNearestNeighbor(object):
             # Hint: Look up the function numpy.argsort.                             #
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-            pass
+            closest_y = self.y_train[np.argsort(dists[i])[:k]]
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
             #########################################################################
@@ -176,7 +179,7 @@ class KNearestNeighbor(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            y_pred[i] = np.argmax(np.bincount(closest_y))
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
