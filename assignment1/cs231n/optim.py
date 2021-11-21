@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.function_base import select
 
 """
 This file implements various first-order update rules that are commonly used
@@ -45,7 +46,7 @@ def sgd(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    w -= config["learning_rate"] * dw
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
