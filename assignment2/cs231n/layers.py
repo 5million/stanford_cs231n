@@ -396,7 +396,11 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    running_mean = np.mean(x, axis=1).reshape(-1, 1)
+    running_var = np.mean((x - running_mean) ** 2, axis=1).reshape(-1, 1)
+    x_norm = (x - running_mean) / np.sqrt(running_var + eps)
+    out = gamma * x_norm + beta
+    cache = [x, x_norm, running_mean, running_var, gamma, eps]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -430,7 +434,19 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    k = dout.shape[1]
+    x, x_norm, sample_mean, sample_var, gamma, eps = cache
+    # D <- N, D
+    dbeta = np.sum(dout, axis=0)
+    # D <- N, D
+    dgamma = np.sum(dout * x_norm, axis=0)
+    # N, D <- N, D * D
+    dx_norm = dout * gamma
+    # D, 1 <- 
+    dvar = np.sum(dx_norm * (x - sample_mean), axis=1, keepdims=True) * (-0.5) * np.power((sample_var + eps), -1.5)
+    dmean = dvar * (-2) * np.sum(x - sample_mean, axis=1, keepdims=True) / k - np.sum(dx_norm, axis=1, keepdims=True) / np.sqrt(sample_var + eps)
+    print(dmean.shape)
+    dx = dx_norm / np.sqrt(sample_var + eps) + dmean / k + dvar * 2 * (x - sample_mean) / k
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
