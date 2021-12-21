@@ -445,7 +445,6 @@ def layernorm_backward(dout, cache):
     # D, 1 <- 
     dvar = np.sum(dx_norm * (x - sample_mean), axis=1, keepdims=True) * (-0.5) * np.power((sample_var + eps), -1.5)
     dmean = dvar * (-2) * np.sum(x - sample_mean, axis=1, keepdims=True) / k - np.sum(dx_norm, axis=1, keepdims=True) / np.sqrt(sample_var + eps)
-    print(dmean.shape)
     dx = dx_norm / np.sqrt(sample_var + eps) + dmean / k + dvar * 2 * (x - sample_mean) / k
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -492,7 +491,8 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        mask = (np.random.randn(*x.shape) < p) / p
+        out = mask * x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -504,7 +504,7 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out = x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -534,7 +534,8 @@ def dropout_backward(dout, cache):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        print(mask.shape)
+        dx = dout *  mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
