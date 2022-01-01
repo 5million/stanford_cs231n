@@ -643,9 +643,8 @@ def conv_backward_naive(dout, cache):
       for j in range(C):
         for k in range(Ho):
           for l in range(Wo):
-            dx_pad[i, j, k*stride:k*stride+HH, l*stride:l*stride+WW] = np.sum(
-              dout[i, :, k, l] * (w[:, j, :, :].transpose(1, 2, 0).reshape(HH, WW, F)), axis=(2))
-    print(dx_pad[0, 0, :, :])
+            dx_pad[i, j, k*stride:k*stride+HH, l*stride:l*stride+WW] += np.sum(
+              dout[i, :, k, l] * (w[:, j, :, :].reshape(F, HH*WW).transpose(1, 0)), axis=(1)).reshape(3, 3)
     dx = dx_pad[:, :, pad:H+pad, pad:W+pad]
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
