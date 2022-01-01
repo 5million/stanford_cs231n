@@ -679,7 +679,19 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    pool_height = pool_param.get("pool_height")
+    pool_width = pool_param.get("pool_width")
+    stride = pool_param.get("stride")
+    Ho = 1 + (H - pool_height) // stride
+    Wo = 1 + (W - pool_width) // stride
+    out = np.zeros((N, C, Ho, Wo))
+
+    for n in range(N):
+      for c in range(C):
+        for i in range(Ho):
+          for j in range(Wo):
+            out[n, c, i, j] = np.max(x[n, c, i*stride:i*stride+pool_height, j*stride:j*stride+pool_width])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -705,7 +717,23 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, pool_param = cache
+    N, C, H, W = x.shape
+    pool_height = pool_param.get("pool_height")
+    pool_width = pool_param.get("pool_width")
+    stride = pool_param.get("stride")
+    Ho = 1 + (H - pool_height) // stride
+    Wo = 1 + (W - pool_width) // stride
+    dx = np.zeros_like(x)
+
+    for i in range(N):
+      for j in range(C):
+        for k in range(H):
+          for l in range(W):
+            mask = np.unravel_index(x[i, j, k:k+pool_height, l:l+pool_width].argmax(), 
+                                    (pool_height, pool_width))
+            
+            dx[i, j, k, l] += dout[i, j, k+mask[0]//stride, l+mask[1]//stride]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
