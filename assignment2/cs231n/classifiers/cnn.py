@@ -49,7 +49,7 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # TODO: Initialize weights and biases for the three-layer convolutional    #
         # network. Weights should be initialized from a Gaussian centered at 0.0   #
-        # with standard deviation equal to weight_scale; biases should be          #
+        # with standard deviation equal to weight_scale;–≠ biases should be          #
         # initialized to zero. All weights and biases should be stored in the      #
         #  dictionary self.params. Store weights and biases for the convolutional  #
         # layer using the keys 'W1' and 'b1'; use keys 'W2' and 'b2' for the       #
@@ -63,7 +63,12 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.params["W1"] = weight_scale * np.random.rand(num_filters, input_dim[0], filter_size, filter_size)
+        self.params["b1"] = np.zeros(num_filters)
+        self.params["W2"] = weight_scale * np.random.rand(num_filters * (input_dim[1] // 2) * (input_dim[2] // 2), hidden_dim)
+        self.params["b2"] = np.zeros(hidden_dim)
+        self.params["W3"] = weight_scale * np.random.rand(hidden_dim, num_classes)
+        self.params["b3"] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -82,7 +87,6 @@ class ThreeLayerConvNet(object):
         W1, b1 = self.params["W1"], self.params["b1"]
         W2, b2 = self.params["W2"], self.params["b2"]
         W3, b3 = self.params["W3"], self.params["b3"]
-
         # pass conv_param to the forward pass for the convolutional layer
         # Padding and stride chosen to preserve the input spatial size
         filter_size = W1.shape[2]
@@ -101,8 +105,11 @@ class ThreeLayerConvNet(object):
         # cs231n/layer_utils.py in your implementation (already imported).         #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+    
+        layer_out1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        layer_out2, cache2 = affine_relu_forward(layer_out1.reshape(-1, W2.shape[0]), W2, b2)
+        layer_out3, cache3 = affine_forward(layer_out2, W3, b3)
+        scores = layer_out3
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,8 +132,14 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
-
+        loss, dscores = softmax_loss(scores, y)
+        loss += self.reg * (np.sum(W1*W1) + np.sum(W2*W2) + np.sum(W3*W3)) * 0.5
+        dlayer_out2, grads["W3"], grads["b3"] = affine_backward(dscores, cache3)
+        grads["W3"] += self.reg * W3
+        dlayer_out1, grads["W2"], grads["b2"] = affine_relu_backward(dlayer_out2, cache2)
+        grads["W2"] += self.reg * W2
+        dx, grads["W1"], grads["b1"] = conv_relu_pool_backward(dlayer_out1.reshape(layer_out1.shape), cache1)
+        grads["W1"] += self.reg * W1
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #

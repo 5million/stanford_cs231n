@@ -239,7 +239,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         running_var = momentum * running_var + (1 - momentum) * sample_var
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-        #########            ##############################################################
+        #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
     elif mode == "test":
@@ -774,7 +774,10 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    x_nd = x.transpose(0, 2, 3, 1).reshape(-1, C)
+    out, cache = batchnorm_forward(x_nd, gamma, beta, bn_param)
+    out = out.reshape(N, H, W, C).transpose(0, 3, 1, 2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -807,7 +810,10 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = dout.shape
+    dout_nd = dout.transpose(0, 2, 3, 1).reshape(-1, C)
+    dx, dgamma, dbeta = batchnorm_backward_alt(dout_nd, cache)
+    dx = dx.reshape(N, H, W, C).transpose(0, 3, 1, 2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -848,7 +854,16 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    x_g_norm = np.zeros_like(x)
+    for i in range(C // G):
+      x_g = x[:, i*G:(i+1)*G, :, :]
+      sample_mean = np.mean(x_g, axis=1, keepdims=True)
+      sample_var = np.mean((x_g - sample_mean) ** 2, axis=1, keepdims=True)
+      x_g_norm[:, i*G:(i+1)*G, :, :] = (x_g - sample_mean) / np.sqrt(sample_var + eps)
+    
+    out = gamma * x_g_norm + beta
+    cache = [x, x_g_norm, sample_mean, sample_var, gamma, eps]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -877,7 +892,18 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    k = dout.shape[1]
+    x, x_g_norm, sample_mean, sample_var, gamma, eps = cache
+    # 1, D, 1, 1 <- N, C, H, W
+    dbeta = np.sum(dout, axis=(0, 2, 3), keepdims=True)
+    # 1, D, 1, 1 <- N, C, H, W
+    dgamma = np.sum(dout * x_g_norm, axis=(0, 2, 3), keepdims=True)
+    # N, C, H, W <- N, C, H, W * 1, C, 1, 1
+    dx_norm = dout * gamma
+    # D, 1 <- 
+    dvar = np.sum(dx_norm * (x - sample_mean), axis=1, keepdims=True) * (-0.5) * np.power((sample_var + eps), -1.5)
+    dmean = dvar * (-2) * np.sum(x - sample_mean, axis=1, keepdims=True) / k - np.sum(dx_norm, axis=1, keepdims=True) / np.sqrt(sample_var + eps)
+    dx = dx_norm / np.sqrt(sample_var + eps) + dmean / k + dvar * 2 * (x - sample_mean) / k
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
