@@ -855,15 +855,18 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     N, C, H, W = x.shape
-    x_g_norm = np.zeros_like(x)
+    x_norm = np.zeros_like(x)
+    sample_mean = []
+    sample_var = []
     for i in range(C // G):
       x_g = x[:, i*G:(i+1)*G, :, :]
-      sample_mean = np.mean(x_g, axis=1, keepdims=True)
-      sample_var = np.mean((x_g - sample_mean) ** 2, axis=1, keepdims=True)
-      x_g_norm[:, i*G:(i+1)*G, :, :] = (x_g - sample_mean) / np.sqrt(sample_var + eps)
-    
-    out = gamma * x_g_norm + beta
-    cache = [x, x_g_norm, sample_mean, sample_var, gamma, eps]
+      sample_mean_g = np.mean(x_g, axis=1, keepdims=True)
+      sample_var_g = np.mean((x_g - sample_mean_g) ** 2, axis=1, keepdims=True)
+      x_norm[:, i*G:(i+1)*G, :, :] = (x_g - sample_mean_g) / np.sqrt(sample_var_g + eps)
+      sample_mean.append(sample_mean_g)
+      sample_var.append(sample_var_g)
+    out = gamma * x_norm + beta
+    cache = [x, x_norm, sample_mean, sample_var, gamma, eps, G]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -892,18 +895,25 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    k = dout.shape[1]
-    x, x_g_norm, sample_mean, sample_var, gamma, eps = cache
-    # 1, D, 1, 1 <- N, C, H, W
+    C = dout.shape[1]
+    x, x_norm, sample_mean, sample_var, gamma, eps, G = cache
+    # 1, C, 1, 1 <- N, C, H, W
     dbeta = np.sum(dout, axis=(0, 2, 3), keepdims=True)
-    # 1, D, 1, 1 <- N, C, H, W
-    dgamma = np.sum(dout * x_g_norm, axis=(0, 2, 3), keepdims=True)
+    # 1, C, 1, 1 <- N, C, H, W
+    dgamma = np.sum(dout * x_norm, axis=(0, 2, 3), keepdims=True)
     # N, C, H, W <- N, C, H, W * 1, C, 1, 1
     dx_norm = dout * gamma
-    # D, 1 <- 
-    dvar = np.sum(dx_norm * (x - sample_mean), axis=1, keepdims=True) * (-0.5) * np.power((sample_var + eps), -1.5)
-    dmean = dvar * (-2) * np.sum(x - sample_mean, axis=1, keepdims=True) / k - np.sum(dx_norm, axis=1, keepdims=True) / np.sqrt(sample_var + eps)
-    dx = dx_norm / np.sqrt(sample_var + eps) + dmean / k + dvar * 2 * (x - sample_mean) / k
+    dx = np.zeros_like(x)
+    # N, 1, H, W <- 
+    for i in range(C // G):
+      x_g = x[:, i*G:(i+1)*G, :, :]
+      dx_norm_g = dx_norm[:, i*G:(i+1)*G, :, :]
+      dvar = np.sum(dx_norm_g * (x_g - sample_mean[i]), axis=1, keepdims=True) * (-0.5) * \
+        np.power((sample_var[i] + eps), -1.5)
+      dmean = dvar * (-2) * np.sum(x_g - sample_mean[i], axis=1, keepdims=True) / G - \
+        np.sum(dx_norm_g, axis=1, keepdims=True) / np.sqrt(sample_var[i] + eps)
+      dx[:, i*G:(i+1)*G, :, :] = dx_norm_g / np.sqrt(sample_var[i] + eps) + dmean / G + \
+        dvar * 2 * (x_g - sample_mean[i]) / G
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
