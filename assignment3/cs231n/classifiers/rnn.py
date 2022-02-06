@@ -241,11 +241,16 @@ class CaptioningRNN:
 
         prev_word_idx = [self._start] * N
         prev_h = affine_out
+        prev_c = np.zeros_like(prev_h)
         captions[:, 0] = self._start
         for i in range(1, max_length):
           prev_word_embed = W_embed[prev_word_idx]
           # (N, T, W) -> (N, T, H)
-          next_h, _ = rnn_step_forward(prev_word_embed, prev_h, Wx, Wh, b)
+          if self.cell_type == "rnn":
+            next_h, _ = rnn_step_forward(prev_word_embed, prev_h, Wx, Wh, b)
+          elif self.cell_type == "lstm":
+            next_h, next_c,_ = lstm_step_forward(prev_word_embed, prev_h, prev_c, Wx, Wh, b)
+            prev_c = next_c
           # (N, T, H) -> (N, T, V)
           vocab_out, _ = affine_forward(next_h, W_vocab, b_vocab)
           captions[:, i] = list(np.argmax(vocab_out, axis=1))
