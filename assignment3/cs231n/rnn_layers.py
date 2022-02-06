@@ -2,6 +2,7 @@
 """
 
 import numpy as np
+from numpy.lib.function_base import asarray_chkfinite
 
 
 def affine_forward(x, w, b):
@@ -336,7 +337,16 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    _, H = prev_h.shape
+    gate = x.dot(Wx) + prev_h.dot(Wh) + b
+    a_in = sigmoid(gate[:, :H])
+    a_forget = sigmoid(gate[:, H:2*H])
+    a_out = sigmoid(gate[:, 2*H:3*H])
+    a_g = np.tanh(gate[:, 3*H:])
+    next_c = a_forget * prev_c + a_in * a_g
+    next_h = a_out * np.tanh(next_c)
+
+    cache = (x, Wx, Wh, prev_h, prev_c, gate, a_in, a_forget, a_out, a_g, next_c)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -371,7 +381,34 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, Wx, Wh, prev_h, prev_c, gate, a_in, a_forget, a_out, a_g, next_c = cache
+    dgate = np.zeros_like(gate)
+    H = dnext_h.shape[1]
+
+
+    # gate = x.dot(Wx) + prev_h.dot(Wh) + b
+    # a_in = sigmoid(gate[:, :H])
+    # a_forget = sigmoid(gate[:, H:2*H])
+    # a_out = sigmoid(gate[:, 2*H:3*H])
+    # a_g = np.tanh(gate[:, 3*H:])
+    # next_c = a_forget * prev_c + a_in * a_g
+    # next_h = a_out * np.tanh(next_c)
+    
+    dc_t = a_out * (1 - np.tanh(next_c) * np.tanh(next_c)) * dnext_h + dnext_c
+    da_in = dc_t * a_g
+    da_forget = dc_t * prev_c
+    da_out = dnext_h * np.tanh(next_c)
+    da_g = dc_t * a_in
+    dgate[:, :H] = da_in * (a_in * (1 - a_in))
+    dgate[:, H:2*H] = da_forget * (a_forget * (1 - a_forget))
+    dgate[:, 2*H:3*H] = da_out * (a_out * (1 - a_out))
+    dgate[:, 3*H:] = da_g * (1 - a_g * a_g)
+    dprev_c = dc_t * a_forget
+    dprev_h = dgate.dot(Wh.T)
+    dWx = x.T.dot(dgate)
+    dWh = prev_h.T.dot(dgate)
+    db = dgate.sum(axis=0)
+    dx = dgate.dot(Wx.T)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -410,8 +447,17 @@ def lstm_forward(x, h0, Wx, Wh, b):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    N, T, _ = x.shape
+    H = h0.shape[1]
+    next_h = h0
+    next_c = np.zeros_like(h0)
+    h = np.zeros((N, T, H))
+    cache = []
+    for i in range(T):
+        next_h, next_c, cache_cur = lstm_step_forward(x[:, i, :], next_h, next_c, Wx, Wh, b)
+        h[:, i, :] = next_h
+        cache.append(cache_cur)
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -441,7 +487,27 @@ def lstm_backward(dh, cache):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, T, H = dh.shape
+    x = cache[-1][0]
+    D = x.shape[1]
+
+    dprev_h = np.zeros((N, H))
+    dprev_c = np.zeros((N, H))
+    dx = np.zeros((N, T, D))
+    dh0 = np.zeros((N, H))
+    dWx= np.zeros((D, 4 * H))
+    dWh = np.zeros((H, 4 * H))
+    db = np.zeros((4 * H,))
+
+    for i in reversed(range(T)):
+        dnext_h = dh[:, i, :] + dprev_h
+        dnext_c = dprev_c
+        dx[:, i, :], dprev_h, dprev_c, cur_dWx, cur_dWh, cur_db = lstm_step_backward(
+            dnext_h, dnext_c, cache[i])
+        dWx += cur_dWx
+        dWh += cur_dWh
+        db += cur_db
+    dh0 = dprev_h
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################

@@ -1,5 +1,5 @@
-from typing_extensions import Self
 import numpy as np
+from numpy.lib.function_base import select
 
 from ..rnn_layers import *
 
@@ -153,13 +153,19 @@ class CaptioningRNN:
         # (N, T) -> (N, T, W)
         embedded_out, embedded_cache = word_embedding_forward(captions_in, W_embed)
         # (N, T, W) -> (N, T, H)
-        h, rnn_cache = rnn_forward(embedded_out, affine_out, Wx, Wh, b)
+        if self.cell_type == "rnn":
+          h, rnn_cache = rnn_forward(embedded_out, affine_out, Wx, Wh, b)
+        elif self.cell_type == "lstm":
+          h, lstm_cache = lstm_forward(embedded_out, affine_out, Wx, Wh, b)
         # (N, T, H) -> (N, T, V)
         vocab_out, vocab_cache = temporal_affine_forward(h, W_vocab, b_vocab)
         loss, dout = temporal_softmax_loss(vocab_out, captions_out, mask, verbose=False)
 
         dh, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dout, vocab_cache)
-        dx, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dh, rnn_cache)
+        if self.cell_type == "rnn":
+          dx, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dh, rnn_cache)
+        elif self.cell_type == "lstm":
+          dx, dh0, grads["Wx"], grads["Wh"], grads["b"] = lstm_backward(dh, lstm_cache)
         grads["W_embed"] = word_embedding_backward(dx, embedded_cache)
         _, grads["W_proj"], grads["b_proj"] = affine_backward(dh0, affine_cache)
 
