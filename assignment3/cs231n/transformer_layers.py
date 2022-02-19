@@ -3,6 +3,8 @@ import torch.nn as nn
 from torch.nn import functional as F
 import math
 
+from torch.nn.modules.pooling import MaxPool1d
+
 """
 This file defines layer types that are commonly used for transformers.
 """
@@ -38,7 +40,11 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        col = torch.arange(0, max_len).unsqueeze(1)
+        row = 10000**(-torch.arange(0, embed_dim, 2) / embed_dim)
+        m = col * row
+        pe[:, :, 0::2] = torch.sin(m)
+        pe[:, :, 1::2] = torch.cos(m)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -69,8 +75,9 @@ class PositionalEncoding(nn.Module):
         # afterward. This should only take a few lines of code.                    #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+      
+        output = x + self.pe[:, :S, :]
+        output = self.dropout(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -126,7 +133,10 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.depth = int(embed_dim / num_heads)
+        self.dropout = nn.Dropout(dropout)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -174,7 +184,27 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        mixed_query_layer = self.query(query)
+        mixed_key_layer = self.key(key)
+        mixed_value_layer = self.value(value)
+        query_layer = mixed_query_layer.reshape((N, S, self.num_heads, self.depth)).transpose(2, 1)
+        key_layer = mixed_key_layer.reshape((N, T, self.num_heads, self.depth)).transpose(2, 1)
+        value_layer = mixed_value_layer.reshape((N, T, self.num_heads, self.depth)).transpose(2, 1)
+        
+        # query(N, H, S, E/H) · key(N, H, E/H, T) -> (N, H, S, T)
+        dot_product_attention = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+        scaled_dot_product_attention = dot_product_attention / math.sqrt(self.depth)
+        if attn_mask is not None:
+          scaled_dot_product_attention = scaled_dot_product_attention.masked_fill(attn_mask == False, -float('inf'))
+
+        attention = nn.Softmax(dim=-1)(scaled_dot_product_attention)
+        attention_dropout = self.dropout(attention)
+        
+        # (N, H, S, T) · (N, H, T, E/H) -> (N, H, S, E/H)
+        output = torch.matmul(attention_dropout, value_layer)
+        # (N, H, S, E/H) -> (N, S, E)
+        output = self.proj(output.transpose(1, 2).reshape(N, S, D))
+        # output = torch.dropout()
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
